@@ -69,4 +69,10 @@ public final class ReturnStatement
                 .add("value", value)
                 .toString();
     }
+
+    @Override
+    public boolean shallowEquals(Node other)
+    {
+        return sameClass(this, other);
+    }
 }

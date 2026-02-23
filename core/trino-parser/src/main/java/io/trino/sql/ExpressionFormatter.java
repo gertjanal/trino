@@ -29,6 +29,8 @@ import io.trino.sql.tree.BooleanLiteral;
 import io.trino.sql.tree.Cast;
 import io.trino.sql.tree.CoalesceExpression;
 import io.trino.sql.tree.ComparisonExpression;
+import io.trino.sql.tree.CompoundStatement;
+import io.trino.sql.tree.ControlStatement;
 import io.trino.sql.tree.CurrentCatalog;
 import io.trino.sql.tree.CurrentDate;
 import io.trino.sql.tree.CurrentPath;
@@ -75,6 +77,7 @@ import io.trino.sql.tree.LocalTime;
 import io.trino.sql.tree.LocalTimestamp;
 import io.trino.sql.tree.LogicalExpression;
 import io.trino.sql.tree.LongLiteral;
+import io.trino.sql.tree.MultilineLambdaExpression;
 import io.trino.sql.tree.Node;
 import io.trino.sql.tree.NotExpression;
 import io.trino.sql.tree.NullIfExpression;
@@ -84,6 +87,7 @@ import io.trino.sql.tree.OrderBy;
 import io.trino.sql.tree.Parameter;
 import io.trino.sql.tree.QualifiedName;
 import io.trino.sql.tree.QuantifiedComparisonExpression;
+import io.trino.sql.tree.ReturnStatement;
 import io.trino.sql.tree.Row;
 import io.trino.sql.tree.RowDataType;
 import io.trino.sql.tree.SearchedCaseExpression;
@@ -111,6 +115,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.google.common.base.Preconditions.checkState;
 import static com.google.common.collect.Iterables.getOnlyElement;
@@ -148,6 +153,17 @@ public final class ExpressionFormatter
         protected String visitNode(Node node, Void context)
         {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        protected String visitCompoundStatement(CompoundStatement node, Void context)
+        {
+            return node.getStatements().stream().map(n -> process(n, context)).collect(joining(" ", "BEGIN ", " END"));
+        }
+
+        protected String visitReturnStatement(ReturnStatement node, Void context)
+        {
+            return "RETURN " + process(node.getValue());
         }
 
         @Override
@@ -494,6 +510,18 @@ public final class ExpressionFormatter
             Joiner.on(", ").appendTo(builder, node.getArguments());
             builder.append(") -> ");
             builder.append(process(node.getBody(), context));
+            return builder.toString();
+        }
+
+        @Override
+        protected String visitMultilineLambdaExpression(MultilineLambdaExpression node, Void context)
+        {
+            StringBuilder builder = new StringBuilder();
+
+            builder.append('(');
+            Joiner.on(", ").appendTo(builder, node.getArguments());
+            builder.append(") -> ");
+            node.getStatements().forEach(statement -> builder.append(process(statement, context)));
             return builder.toString();
         }
 

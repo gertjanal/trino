@@ -313,6 +313,7 @@ import static io.trino.operator.scalar.Re2JCastToRegexpFunction.castCharToRe2JRe
 import static io.trino.operator.scalar.Re2JCastToRegexpFunction.castVarcharToRe2JRegexp;
 import static io.trino.operator.scalar.RowToJsonCast.ROW_TO_JSON;
 import static io.trino.operator.scalar.RowToRowCast.ROW_TO_ROW_CAST;
+import static io.trino.operator.scalar.RowTransformer.ROW_TRANSFORMER;
 import static io.trino.operator.scalar.TryCastFunction.TRY_CAST;
 import static io.trino.operator.scalar.ZipFunction.ZIP_FUNCTIONS;
 import static io.trino.operator.scalar.ZipWithFunction.ZIP_WITH_FUNCTION;
@@ -725,6 +726,8 @@ public final class SystemFunctionBundle
                 .scalar(io.trino.operator.scalar.timetz.AtTimeZone.class)
                 .scalar(io.trino.operator.scalar.timetz.AtTimeZoneWithOffset.class)
                 .scalar(CurrentTime.class);
+
+        builder.function(ROW_TRANSFORMER);
 
         switch (featuresConfig.getRegexLibrary()) {
             case JONI:

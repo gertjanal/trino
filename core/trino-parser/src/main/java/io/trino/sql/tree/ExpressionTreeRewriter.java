@@ -670,6 +670,31 @@ public final class ExpressionTreeRewriter<C>
         }
 
         @Override
+        protected Expression visitMultilineLambdaExpression(MultilineLambdaExpression node, Context<C> context)
+        {
+            if (!context.isDefaultRewrite()) {
+                Expression result = rewriter.rewriteLambdaExpression(node, context.get(), ExpressionTreeRewriter.this);
+                if (result != null) {
+                    return result;
+                }
+            }
+
+            List<LambdaArgumentDeclaration> arguments = node.getArguments().stream()
+                    .map(LambdaArgumentDeclaration::getName)
+                    .map(expression -> rewrite(expression, context.get()))
+                    .map(LambdaArgumentDeclaration::new)
+                    .collect(toImmutableList());
+
+//            Expression body = rewrite(node.getStatement(), context.get());
+//            if (body != node.getStatement()) {
+//                return new LambdaExpression(node.getLocation().orElseThrow(), arguments, body);
+//            }
+            // TODO!
+
+            return node;
+        }
+
+        @Override
         public Expression visitLikePredicate(LikePredicate node, Context<C> context)
         {
             if (!context.isDefaultRewrite()) {

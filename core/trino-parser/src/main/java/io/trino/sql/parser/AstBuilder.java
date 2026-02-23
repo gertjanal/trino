@@ -22,6 +22,7 @@ import io.trino.grammar.sql.SqlBaseParser;
 import io.trino.grammar.sql.SqlBaseParser.CorrespondingContext;
 import io.trino.grammar.sql.SqlBaseParser.CreateCatalogContext;
 import io.trino.grammar.sql.SqlBaseParser.DropCatalogContext;
+import io.trino.grammar.sql.SqlBaseParser.FunctionDefinitionContext;
 import io.trino.grammar.sql.SqlBaseParser.OwnedEntityKindContext;
 import io.trino.sql.tree.AddColumn;
 import io.trino.sql.tree.AliasedRelation;
@@ -182,6 +183,7 @@ import io.trino.sql.tree.MergeCase;
 import io.trino.sql.tree.MergeDelete;
 import io.trino.sql.tree.MergeInsert;
 import io.trino.sql.tree.MergeUpdate;
+import io.trino.sql.tree.MultilineLambdaExpression;
 import io.trino.sql.tree.NaturalJoin;
 import io.trino.sql.tree.NestedColumns;
 import io.trino.sql.tree.Node;
@@ -3146,6 +3148,21 @@ class AstBuilder
     }
 
     @Override
+    public Node visitMultilineLambda(SqlBaseParser.MultilineLambdaContext context)
+    {
+        List<LambdaArgumentDeclaration> arguments = visit(context.identifier(), Identifier.class).stream()
+                .map(argument -> new LambdaArgumentDeclaration(argument.getLocation().orElseThrow(), argument))
+                .collect(toList());
+
+        ControlStatement statement = (ControlStatement) visit(context.controlStatement());
+        if (!(statement instanceof ReturnStatement || statement instanceof CompoundStatement)) {
+            throw parseError("Function body must start with RETURN or BEGIN", context.controlStatement());
+        }
+
+        return new MultilineLambdaExpression(getLocation(context), arguments, statement);
+    }
+
+    @Override
     public Node visitFilter(SqlBaseParser.FilterContext context)
     {
         return visit(context.booleanExpression());
@@ -3883,7 +3900,7 @@ class AstBuilder
     }
 
     @Override
-    public Node visitFunctionDefinition(SqlBaseParser.FunctionDefinitionContext context)
+    public Node visitFunctionDefinition(FunctionDefinitionContext context)
     {
         String value = context.getText();
         value = value.substring(2, value.length() - 2);

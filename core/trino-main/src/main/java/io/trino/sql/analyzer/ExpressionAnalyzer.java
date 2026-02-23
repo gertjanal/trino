@@ -68,6 +68,7 @@ import io.trino.sql.analyzer.PatternRecognitionAnalysis.NavigationMode;
 import io.trino.sql.analyzer.PatternRecognitionAnalysis.PatternInputAnalysis;
 import io.trino.sql.analyzer.PatternRecognitionAnalysis.ScalarInputDescriptor;
 import io.trino.sql.ir.optimizer.IrExpressionEvaluator;
+import io.trino.sql.tree.AbstractLambdaExpression;
 import io.trino.sql.tree.ArithmeticBinaryExpression;
 import io.trino.sql.tree.ArithmeticUnaryExpression;
 import io.trino.sql.tree.Array;
@@ -126,6 +127,7 @@ import io.trino.sql.tree.LocalTimestamp;
 import io.trino.sql.tree.LogicalExpression;
 import io.trino.sql.tree.LongLiteral;
 import io.trino.sql.tree.MeasureDefinition;
+import io.trino.sql.tree.MultilineLambdaExpression;
 import io.trino.sql.tree.Node;
 import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.NotExpression;
@@ -1740,7 +1742,7 @@ public class ExpressionAnalyzer
         {
             ImmutableList.Builder<TypeSignatureProvider> argumentTypesBuilder = ImmutableList.builder();
             for (Expression argument : arguments) {
-                if (argument instanceof LambdaExpression) {
+                if (argument instanceof AbstractLambdaExpression) {
                     argumentTypesBuilder.add(new TypeSignatureProvider(
                             types -> {
                                 ExpressionAnalyzer innerExpressionAnalyzer = new ExpressionAnalyzer(
@@ -2641,6 +2643,53 @@ public class ExpressionAnalyzer
         }
 
         @Override
+        protected Type visitMultilineLambdaExpression(MultilineLambdaExpression node, Context context)
+        {
+            if (context.isPatternRecognition()) {
+                throw semanticException(NOT_SUPPORTED, node, "Lambda expression in pattern recognition context is not yet supported");
+            }
+
+            //verifyNoAggregateWindowOrGroupingFunctions(session, functionResolver, accessControl, node.getBody(), "Lambda expression");
+            if (!context.isExpectingLambda()) {
+                throw semanticException(TYPE_MISMATCH, node, "Lambda expression should always be used inside a function");
+            }
+
+            List<Type> types = context.getFunctionInputTypes();
+            List<LambdaArgumentDeclaration> lambdaArguments = node.getArguments();
+
+            if (types.size() != lambdaArguments.size()) {
+                throw semanticException(INVALID_PARAMETER_USAGE, node,
+                        "Expected a lambda that takes %s argument(s) but got %s", types.size(), lambdaArguments.size());
+            }
+
+            ImmutableList.Builder<Field> fields = ImmutableList.builder();
+            for (int i = 0; i < lambdaArguments.size(); i++) {
+                LambdaArgumentDeclaration lambdaArgument = lambdaArguments.get(i);
+                Type type = types.get(i);
+                fields.add(Field.newUnqualified(lambdaArgument.getName().getValue(), type));
+                setExpressionType(lambdaArgument, type);
+            }
+
+            Scope lambdaScope = Scope.builder()
+                    .withParent(context.getScope())
+                    .withRelationType(RelationId.of(node), new RelationType(fields.build()))
+                    .build();
+
+            ImmutableMap.Builder<FieldId, LambdaArgumentDeclaration> fieldToLambdaArgumentDeclaration = ImmutableMap.builder();
+            if (context.isInLambda()) {
+                fieldToLambdaArgumentDeclaration.putAll(context.getFieldToLambdaArgumentDeclaration());
+            }
+            for (LambdaArgumentDeclaration lambdaArgument : lambdaArguments) {
+                ResolvedField resolvedField = lambdaScope.resolveField(lambdaArgument, QualifiedName.of(lambdaArgument.getName().getValue()));
+                fieldToLambdaArgumentDeclaration.put(FieldId.from(resolvedField), lambdaArgument);
+            }
+
+            Type returnType = process(node.getReturnType(), context.inLambda(lambdaScope, fieldToLambdaArgumentDeclaration.buildOrThrow()));
+            FunctionType functionType = new FunctionType(types, returnType);
+            return setExpressionType(node, functionType);
+        }
+
+        @Override
         protected Type visitExpression(Expression node, Context context)
         {
             throw semanticException(NOT_SUPPORTED, node, "not yet implemented: %s", node.getClass().getName());
@@ -2929,7 +2978,7 @@ public class ExpressionAnalyzer
                     throw semanticException(DUPLICATE_PARAMETER_NAME, pathParameter.getName(), "%s JSON path parameter is specified more than once", parameterName);
                 }
 
-                if (parameter instanceof LambdaExpression) {
+                if (parameter instanceof AbstractLambdaExpression) {
                     throw semanticException(NOT_SUPPORTED, parameter, "%s is not supported as JSON path parameter", parameter.getClass().getSimpleName());
                 }
                 // if the input expression is a JSON-returning function, there should be an explicit or implicit input format (spec p.817)
@@ -3082,7 +3131,7 @@ public class ExpressionAnalyzer
                 }
                 keyFields.add(new RowType.Field(Optional.empty(), keyType));
 
-                if (value instanceof LambdaExpression) {
+                if (value instanceof AbstractLambdaExpression) {
                     throw semanticException(NOT_SUPPORTED, value, "%s is not supported as JSON object value", value.getClass().getSimpleName());
                 }
 
@@ -3200,7 +3249,7 @@ public class ExpressionAnalyzer
                 Expression element = arrayElement.getValue();
                 Optional<JsonFormat> format = arrayElement.getFormat();
 
-                if (element instanceof LambdaExpression) {
+                if (element instanceof AbstractLambdaExpression) {
                     throw semanticException(NOT_SUPPORTED, element, "%s is not supported as JSON array element", element.getClass().getSimpleName());
                 }
 

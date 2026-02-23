@@ -20,17 +20,22 @@ import java.util.Objects;
 
 import static java.util.Objects.requireNonNull;
 
-public class LambdaExpression
+public final class MultilineLambdaExpression
         extends AbstractLambdaExpression
 {
     private final List<LambdaArgumentDeclaration> arguments;
-    private final Expression body;
+    private final List<ControlStatement> statements;
 
-    public LambdaExpression(NodeLocation location, List<LambdaArgumentDeclaration> arguments, Expression body)
+    public MultilineLambdaExpression(NodeLocation location, List<LambdaArgumentDeclaration> arguments, ControlStatement statement)
     {
         super(location);
         this.arguments = requireNonNull(arguments, "arguments is null");
-        this.body = requireNonNull(body, "body is null");
+        requireNonNull(statement, "statement is null");
+        this.statements = statement instanceof CompoundStatement c ? c.getStatements() : ImmutableList.of(statement);
+        if (this.statements.isEmpty()) {
+            // TODO should this be IAE?
+            throw new IllegalArgumentException("statement is empty");
+        }
     }
 
     public List<LambdaArgumentDeclaration> getArguments()
@@ -38,15 +43,25 @@ public class LambdaExpression
         return arguments;
     }
 
-    public Expression getBody()
+    public List<ControlStatement> getStatements()
     {
-        return body;
+        return statements;
+    }
+
+    public Expression getReturnType()
+    {
+        List<ControlStatement> statements = getStatements();
+        if (statements.getLast() instanceof ReturnStatement s) {
+            return s.getValue();
+        }
+        // TODO should this be ISE?
+        throw new IllegalStateException("Unexpected statement type: " + statements.getLast().getClass());
     }
 
     @Override
     public <R, C> R accept(AstVisitor<R, C> visitor, C context)
     {
-        return visitor.visitLambdaExpression(this, context);
+        return visitor.visitMultilineLambdaExpression(this, context);
     }
 
     @Override
@@ -54,7 +69,7 @@ public class LambdaExpression
     {
         ImmutableList.Builder<Node> nodes = ImmutableList.builder();
         nodes.addAll(arguments);
-        nodes.add(body);
+        nodes.addAll(statements);
         return nodes.build();
     }
 
@@ -67,15 +82,15 @@ public class LambdaExpression
         if (obj == null || getClass() != obj.getClass()) {
             return false;
         }
-        LambdaExpression that = (LambdaExpression) obj;
+        MultilineLambdaExpression that = (MultilineLambdaExpression) obj;
         return Objects.equals(arguments, that.arguments) &&
-                Objects.equals(body, that.body);
+                Objects.equals(statements, that.statements);
     }
 
     @Override
     public int hashCode()
     {
-        return Objects.hash(arguments, body);
+        return Objects.hash(arguments, statements);
     }
 
     @Override

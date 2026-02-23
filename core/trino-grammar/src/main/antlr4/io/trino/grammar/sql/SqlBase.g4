@@ -603,6 +603,8 @@ primaryExpression
     | identifier over                                                                     #measure
     | identifier '->' expression                                                          #lambda
     | '(' (identifier (',' identifier)*)? ')' '->' expression                             #lambda
+    | identifier '->' controlStatement                                                    #multilineLambda
+    | '(' (identifier (',' identifier)*)? ')' '->' controlStatement                       #multilineLambda
     | '(' query ')'                                                                       #subqueryExpression
     // This is an extension to ANSI SQL, which considers EXISTS to be a <boolean expression>
     | EXISTS '(' query ')'                                                                #exists

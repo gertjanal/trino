@@ -850,6 +850,14 @@ public abstract class DefaultTraversalVisitor<C>
     }
 
     @Override
+    protected Void visitMultilineLambdaExpression(MultilineLambdaExpression node, C context)
+    {
+        node.getStatements().forEach(statement -> process(statement, context));
+
+        return null;
+    }
+
+    @Override
     protected Void visitExcludedPattern(ExcludedPattern node, C context)
     {
         process(node.getPattern(), context);

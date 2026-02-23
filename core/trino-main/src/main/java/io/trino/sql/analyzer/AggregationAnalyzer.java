@@ -62,6 +62,7 @@ import io.trino.sql.tree.LocalTime;
 import io.trino.sql.tree.LocalTimestamp;
 import io.trino.sql.tree.LogicalExpression;
 import io.trino.sql.tree.MeasureDefinition;
+import io.trino.sql.tree.MultilineLambdaExpression;
 import io.trino.sql.tree.Node;
 import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.NotExpression;
@@ -506,6 +507,13 @@ class AggregationAnalyzer
         protected Boolean visitLambdaExpression(LambdaExpression node, Void context)
         {
             return process(node.getBody(), context);
+        }
+
+        @Override
+        protected Boolean visitMultilineLambdaExpression(MultilineLambdaExpression node, Void context)
+        {
+            // TODO fix multiple statements
+            return process(node.getStatements().getLast(), context);
         }
 
         @Override

@@ -20,6 +20,7 @@ import io.trino.sql.tree.Expression;
 import io.trino.sql.tree.Identifier;
 import io.trino.sql.tree.LambdaArgumentDeclaration;
 import io.trino.sql.tree.LambdaExpression;
+import io.trino.sql.tree.MultilineLambdaExpression;
 import io.trino.sql.tree.Node;
 import io.trino.sql.tree.NodeRef;
 
@@ -77,6 +78,19 @@ public final class FreeLambdaReferenceExtractor
         protected Void visitLambdaExpression(LambdaExpression node, Set<String> lambdaArgumentNames)
         {
             return process(node.getBody(), ImmutableSet.<String>builder()
+                    .addAll(lambdaArgumentNames)
+                    .addAll(node.getArguments().stream()
+                            .map(LambdaArgumentDeclaration::getName)
+                            .map(Identifier::getValue)
+                            .collect(toImmutableSet()))
+                    .build());
+        }
+
+        @Override
+        protected Void visitMultilineLambdaExpression(MultilineLambdaExpression node, Set<String> lambdaArgumentNames)
+        {
+            // TODO multiple statements
+            return process(node.getStatements().getLast(), ImmutableSet.<String>builder()
                     .addAll(lambdaArgumentNames)
                     .addAll(node.getArguments().stream()
                             .map(LambdaArgumentDeclaration::getName)

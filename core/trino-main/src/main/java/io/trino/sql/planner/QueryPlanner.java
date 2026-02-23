@@ -80,6 +80,7 @@ import io.trino.sql.planner.plan.UnionNode;
 import io.trino.sql.planner.plan.ValuesNode;
 import io.trino.sql.planner.plan.WindowFrameType;
 import io.trino.sql.planner.plan.WindowNode;
+import io.trino.sql.tree.AbstractLambdaExpression;
 import io.trino.sql.tree.Delete;
 import io.trino.sql.tree.FetchFirst;
 import io.trino.sql.tree.FrameBound;
@@ -1151,7 +1152,7 @@ class QueryPlanner
         analysis.getAggregates(node).stream()
                 .map(FunctionCall::getArguments)
                 .flatMap(List::stream)
-                .filter(expression -> !(expression instanceof LambdaExpression)) // lambda expression is generated at execution time
+                .filter(expression -> !(expression instanceof AbstractLambdaExpression)) // lambda expression is generated at execution time
                 .forEach(inputBuilder::add);
 
         analysis.getAggregates(node).stream()
@@ -1294,7 +1295,7 @@ class QueryPlanner
                     analysis.getResolvedFunction(function).get(),
                     function.getArguments().stream()
                             .map(argument -> {
-                                if (argument instanceof LambdaExpression) {
+                                if (argument instanceof AbstractLambdaExpression) {
                                     return subPlan.rewrite(argument);
                                 }
                                 return coercions.apply(argument).toSymbolReference();
@@ -1487,7 +1488,7 @@ class QueryPlanner
 
             for (FunctionCall windowFunction : functionCalls) {
                 inputsBuilder.addAll(windowFunction.getArguments().stream()
-                                .filter(argument -> !(argument instanceof LambdaExpression)) // lambda expression is generated at execution time
+                                .filter(argument -> !(argument instanceof AbstractLambdaExpression)) // lambda expression is generated at execution time
                                 .collect(Collectors.toList()));
                 inputsBuilder.addAll(getSortItemsFromOrderBy(windowFunction.getOrderBy()).stream()
                         .map(SortItem::getSortKey)
@@ -1807,7 +1808,7 @@ class QueryPlanner
                     analysis.getResolvedFunction(windowFunction).get(),
                     windowFunction.getArguments().stream()
                             .map(argument -> {
-                                if (argument instanceof LambdaExpression) {
+                                if (argument instanceof AbstractLambdaExpression) {
                                     return subPlan.rewrite(argument);
                                 }
                                 return coercions.get(argument).toSymbolReference();
@@ -1889,7 +1890,7 @@ class QueryPlanner
                     analysis.getResolvedFunction(windowFunction).get(),
                     windowFunction.getArguments().stream()
                             .map(argument -> {
-                                if (argument instanceof LambdaExpression) {
+                                if (argument instanceof AbstractLambdaExpression) {
                                     return subPlan.rewrite(argument);
                                 }
                                 return coercions.get(argument).toSymbolReference();

@@ -54,6 +54,8 @@ import io.trino.sql.ir.Logical;
 import io.trino.sql.ir.NullIf;
 import io.trino.sql.ir.Reference;
 import io.trino.sql.ir.Switch;
+import io.trino.sql.relational.RowExpression;
+import io.trino.sql.relational.SpecialForm;
 import io.trino.sql.tree.ArithmeticBinaryExpression;
 import io.trino.sql.tree.ArithmeticUnaryExpression;
 import io.trino.sql.tree.Array;
@@ -64,6 +66,7 @@ import io.trino.sql.tree.BooleanLiteral;
 import io.trino.sql.tree.Cast;
 import io.trino.sql.tree.CoalesceExpression;
 import io.trino.sql.tree.ComparisonExpression;
+import io.trino.sql.tree.ControlStatement;
 import io.trino.sql.tree.CurrentCatalog;
 import io.trino.sql.tree.CurrentDate;
 import io.trino.sql.tree.CurrentPath;
@@ -81,6 +84,7 @@ import io.trino.sql.tree.FunctionCall;
 import io.trino.sql.tree.GenericLiteral;
 import io.trino.sql.tree.Identifier;
 import io.trino.sql.tree.IfExpression;
+import io.trino.sql.tree.IfStatement;
 import io.trino.sql.tree.InListExpression;
 import io.trino.sql.tree.InPredicate;
 import io.trino.sql.tree.IntervalLiteral;
@@ -101,11 +105,13 @@ import io.trino.sql.tree.LocalTime;
 import io.trino.sql.tree.LocalTimestamp;
 import io.trino.sql.tree.LogicalExpression;
 import io.trino.sql.tree.LongLiteral;
+import io.trino.sql.tree.MultilineLambdaExpression;
 import io.trino.sql.tree.NodeRef;
 import io.trino.sql.tree.NotExpression;
 import io.trino.sql.tree.NullIfExpression;
 import io.trino.sql.tree.NullLiteral;
 import io.trino.sql.tree.Parameter;
+import io.trino.sql.tree.ReturnStatement;
 import io.trino.sql.tree.Row;
 import io.trino.sql.tree.SearchedCaseExpression;
 import io.trino.sql.tree.SimpleCaseExpression;
@@ -119,6 +125,7 @@ import io.trino.type.IntervalYearMonthType;
 import io.trino.type.JsonPath2016Type;
 import io.trino.type.UnknownType;
 
+import javax.naming.ldap.Control;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -335,6 +342,7 @@ public class TranslationMap
                 case Trim expression -> translate(expression);
                 case SubscriptExpression expression -> translate(expression);
                 case LambdaExpression expression -> translate(expression);
+                case MultilineLambdaExpression expression -> translate(expression);
                 case Parameter expression -> translate(expression);
                 case JsonExists expression -> translate(expression);
                 case JsonValue expression -> translate(expression);
@@ -989,6 +997,51 @@ public class TranslationMap
         io.trino.sql.ir.Expression rewrittenBody = translateExpression(node.getBody());
         return new Lambda(newArguments.build(), rewrittenBody);
     }
+
+    private io.trino.sql.ir.Expression translate(MultilineLambdaExpression node)
+    {
+        checkState(analysis.getCoercion(node) == null, "cannot coerce a lambda expression");
+
+        ImmutableList.Builder<Symbol> newArguments = ImmutableList.builder();
+        for (LambdaArgumentDeclaration argument : node.getArguments()) {
+            newArguments.add(lambdaArguments.get(NodeRef.of(argument)));
+        }
+
+        io.trino.sql.ir.Expression rewrittenBody = null;
+        for (ControlStatement statement : node.getStatements()) {
+            if (statement instanceof ReturnStatement returnStatement) {
+                rewrittenBody = translateExpression(returnStatement.getValue());
+            }
+//            else if (statement instanceof IfStatement ifStatement) {
+//                body = translate(ifStatement);
+//            }
+        }
+
+        if (rewrittenBody == null) {
+            throw new IllegalStateException("Cannot coerce a lambda expression");
+        }
+
+        return new Lambda(newArguments.build(), rewrittenBody);
+    }
+
+//    private RowExpression translate(IfStatement node)
+//    {
+//        RowExpression condition = translateExpression(node.getExpression());
+//
+//        RowExpression trueExpr =
+//                process(((ReturnStatement) node.getTrueBranch()).getValue(), null);
+//
+//        RowExpression falseExpr =
+//                node.getFalseBranch()
+//                        .map(b -> process(((ReturnStatement) b).getValue(), null))
+//                        .orElse(constantNull(trueExpr.type()));
+//
+//        return new SpecialForm(
+//                SpecialForm.Form.IF,
+//                trueExpr.type(),
+//                ImmutableList.of(condition, trueExpr, falseExpr),
+//                ImmutableList.of());
+//    }
 
     private io.trino.sql.ir.Expression translate(Parameter node)
     {
