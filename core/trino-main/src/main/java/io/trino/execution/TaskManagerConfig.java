@@ -112,6 +112,7 @@ public class TaskManagerConfig
     private int driverTimeoutThreads = 5;
 
     private BigDecimal levelTimeMultiplier = TWO;
+    private boolean enforceQueriesToUseAllPartitionColumns = false;
 
     @Config("experimental.thread-per-driver-scheduler-enabled")
     public TaskManagerConfig setThreadPerDriverSchedulerEnabled(boolean enabled)
@@ -650,5 +651,17 @@ public class TaskManagerConfig
     public void applyFaultTolerantExecutionDefaults()
     {
         taskConcurrency = 8;
+    }
+
+    public boolean getEnforceQueriesToUseAllPartitionColumns()
+    {
+        return enforceQueriesToUseAllPartitionColumns;
+    }
+
+    @Config("task.enforce-queries-to-use-all-partition-columns")
+    public TaskManagerConfig setEnforceQueriesToUseAllPartitionColumns(boolean enforceQueriesToUseAllPartitionColumns)
+    {
+        this.enforceQueriesToUseAllPartitionColumns = enforceQueriesToUseAllPartitionColumns;
+        return this;
     }
 }

@@ -48,6 +48,7 @@ import io.trino.sql.planner.iterative.rule.DetermineJoinDistributionType;
 import io.trino.sql.planner.iterative.rule.DetermineSemiJoinDistributionType;
 import io.trino.sql.planner.iterative.rule.DetermineTableScanNodePartitioning;
 import io.trino.sql.planner.iterative.rule.EliminateCrossJoins;
+import io.trino.sql.planner.iterative.rule.EnforceFullPartitionFilter;
 import io.trino.sql.planner.iterative.rule.EvaluateEmptyIntersect;
 import io.trino.sql.planner.iterative.rule.EvaluateZeroSample;
 import io.trino.sql.planner.iterative.rule.ExtractDereferencesFromFilterAboveScan;
@@ -633,6 +634,16 @@ public class PlanOptimizers
                                 new ApplyTableScanRedirection(plannerContext),
                                 new PruneTableScanColumns(metadata),
                                 new PushPredicateIntoTableScan(plannerContext, false))));
+
+        if (taskManagerConfig.getEnforceQueriesToUseAllPartitionColumns()) {
+            builder.add(
+                    new IterativeOptimizer(
+                            plannerContext,
+                            ruleStats,
+                            statsCalculator,
+                            costCalculator,
+                            ImmutableSet.of(new EnforceFullPartitionFilter(metadata))));
+        }
 
         Set<Rule<?>> pushIntoTableScanRulesExceptJoins = ImmutableSet.<Rule<?>>builder()
                 .addAll(columnPruningRules)
