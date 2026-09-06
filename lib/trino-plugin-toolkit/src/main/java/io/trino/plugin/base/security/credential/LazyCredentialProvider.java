@@ -41,7 +41,7 @@ public class LazyCredentialProvider
     public <T extends Credential> T getCredential(ConnectorIdentity identity, Class<T> type)
     {
         if (credentialProvider == null) {
-            credentialProvider = credentialResolver.get(name).orElseThrow(() -> new TrinoException(CONFIGURATION_INVALID, "Credential provider %s not configured".formatted(name)));
+            credentialProvider = credentialResolver.get(name).orElseThrow(() -> new TrinoException(CONFIGURATION_INVALID, "Credential provider %s not configured. Loaded: [%s]".formatted(name, String.join(", ", credentialResolver.loadedProviders()))));
         }
         return credentialProvider.getCredential(identity, type);
     }

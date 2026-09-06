@@ -18,10 +18,12 @@ import com.google.inject.Inject;
 import io.trino.spi.security.credential.CredentialProvider;
 import io.trino.spi.security.credential.CredentialProviderFactory;
 import io.trino.spi.security.credential.CredentialResolver;
+import org.weakref.jmx.$internal.guava.collect.ImmutableSet;
 
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import static java.util.Objects.requireNonNull;
 
@@ -52,5 +54,10 @@ public class CredentialProviderRegistry
     public Optional<CredentialProvider> get(String providerName)
     {
         return Optional.ofNullable(credentialProviders.get(providerName));
+    }
+
+    @Override
+    public Set<String> loadedProviders() {
+        return ImmutableSet.copyOf(credentialProviders.keySet());
     }
 }

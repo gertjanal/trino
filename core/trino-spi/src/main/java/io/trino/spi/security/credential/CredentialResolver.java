@@ -14,8 +14,11 @@
 package io.trino.spi.security.credential;
 
 import java.util.Optional;
+import java.util.Set;
 
 public interface CredentialResolver
 {
     Optional<CredentialProvider> get(String providerName);
+
+    Set<String> loadedProviders();
 }
