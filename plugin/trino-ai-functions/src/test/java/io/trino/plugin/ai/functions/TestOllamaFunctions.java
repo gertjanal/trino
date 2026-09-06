@@ -35,7 +35,7 @@ public class TestOllamaFunctions
                 .put("ai.provider", "openai")
                 .put("ai.model", "llama3.3")
                 .put("ai.openai.endpoint", "http://localhost:11434")
-                .put("ai.openai.credential-provider.api-key.name", "static")
+                .put("ai.openai.credential-provider.inference.name", "static")
                 .put("ai.http-client.http-proxy", hoverflyAddress.toString())
                 .buildOrThrow();
     }
@@ -44,7 +44,7 @@ public class TestOllamaFunctions
     protected void initCredentials()
     {
         assertions.addPlugin(new ApiKeyCredentialProviderPlugin());
-        assertions.addCredentialProvider("static", "api-key", ImmutableMap.of("api-key", "test"));
+        assertions.addCredentialProvider("static", "api_key", ImmutableMap.of("api-key", "test"));
     }
 
     @Test

@@ -45,7 +45,7 @@ public class TestOpenAiFunctions
     protected void initCredentials()
     {
         assertions.addPlugin(new ApiKeyCredentialProviderPlugin());
-        assertions.addCredentialProvider("static", "api-key", ImmutableMap.of("api-key", "test"));
+        assertions.addCredentialProvider("static", "api_key", ImmutableMap.of("api-key", "test"));
     }
 
     @Test

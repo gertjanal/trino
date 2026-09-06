@@ -143,8 +143,6 @@ import io.trino.security.AllowAllAccessControl;
 import io.trino.security.GroupProviderManager;
 import io.trino.security.credential.CredentialProviderRegistry;
 import io.trino.security.credential.CredentialProviderStore;
-import io.trino.security.credential.FileCredentialProviderStore;
-import io.trino.security.credential.FileCredentialProviderStoreConfig;
 import io.trino.server.PluginManager;
 import io.trino.server.ServerConfig;
 import io.trino.server.SessionPropertyDefaults;
@@ -449,7 +447,7 @@ public class PlanTester
         this.plannerContext = new PlannerContext(metadata, typeOperators, blockEncodingSerde, typeManager, functionManager, languageFunctionManager, tracer, expressionCodec);
         this.evaluator = new InternalConnectorExpressionEvaluator(plannerContext);
 
-        CredentialProviderStore credentialProviderStore = new FileCredentialProviderStore(new FileCredentialProviderStoreConfig());
+        CredentialProviderStore credentialProviderStore = new TestingCredentialProviderStore();
         this.credentialProviderRegistry = new CredentialProviderRegistry(credentialProviderStore);
 
         NodeInfo nodeInfo = new NodeInfo("test");
