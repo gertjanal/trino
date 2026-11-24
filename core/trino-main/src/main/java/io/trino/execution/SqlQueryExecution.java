@@ -149,6 +149,7 @@ public class SqlQueryExecution
     private final EventDrivenTaskSourceFactory eventDrivenTaskSourceFactory;
     private final TaskDescriptorStorage taskDescriptorStorage;
     private final PlanOptimizersStatsCollector planOptimizersStatsCollector;
+    private final EnforcedFilterColumnsChecker enforcedFilterColumnsChecker;
 
     private SqlQueryExecution(
             PreparedQuery preparedQuery,
@@ -157,6 +158,7 @@ public class SqlQueryExecution
             Tracer tracer,
             PlannerContext plannerContext,
             AnalyzerFactory analyzerFactory,
+            EnforcedFilterColumnsConfig enforcedFilterColumnsConfig,
             SplitSourceFactory splitSourceFactory,
             NodePartitioningManager nodePartitioningManager,
             NodeScheduler nodeScheduler,
@@ -241,6 +243,7 @@ public class SqlQueryExecution
             this.eventDrivenTaskSourceFactory = requireNonNull(eventDrivenTaskSourceFactory, "taskSourceFactory is null");
             this.taskDescriptorStorage = requireNonNull(taskDescriptorStorage, "taskDescriptorStorage is null");
             this.planOptimizersStatsCollector = requireNonNull(planOptimizersStatsCollector, "planOptimizersStatsCollector is null");
+            this.enforcedFilterColumnsChecker = new EnforcedFilterColumnsChecker(requireNonNull(enforcedFilterColumnsConfig, "enforcedColumnsConfig is null"));
         }
     }
 
@@ -501,6 +504,7 @@ public class SqlQueryExecution
                 planOptimizersStatsCollector,
                 tableStatsProvider);
         Plan plan = logicalPlanner.plan(analysis);
+        enforcedFilterColumnsChecker.validate(analysis, plan.getRoot(), stateMachine.getSession(), plannerContext);
         queryPlan.set(plan);
 
         // fragment the plan
@@ -791,6 +795,7 @@ public class SqlQueryExecution
         private final int scheduleSplitBatchSize;
         private final PlannerContext plannerContext;
         private final AnalyzerFactory analyzerFactory;
+        private final EnforcedFilterColumnsConfig enforcedFilterColumnsConfig;
         private final SplitSourceFactory splitSourceFactory;
         private final NodePartitioningManager nodePartitioningManager;
         private final NodeScheduler nodeScheduler;
@@ -824,6 +829,7 @@ public class SqlQueryExecution
                 QueryManagerConfig config,
                 PlannerContext plannerContext,
                 AnalyzerFactory analyzerFactory,
+                EnforcedFilterColumnsConfig enforcedFilterColumnsConfig,
                 SplitSourceFactory splitSourceFactory,
                 NodePartitioningManager nodePartitioningManager,
                 NodeScheduler nodeScheduler,
@@ -856,6 +862,7 @@ public class SqlQueryExecution
             this.scheduleSplitBatchSize = config.getScheduleSplitBatchSize();
             this.plannerContext = requireNonNull(plannerContext, "plannerContext is null");
             this.analyzerFactory = requireNonNull(analyzerFactory, "analyzerFactory is null");
+            this.enforcedFilterColumnsConfig = requireNonNull(enforcedFilterColumnsConfig, "enforcedColumnsConfig is null");
             this.splitSourceFactory = requireNonNull(splitSourceFactory, "splitSourceFactory is null");
             this.nodePartitioningManager = requireNonNull(nodePartitioningManager, "nodePartitioningManager is null");
             this.nodeScheduler = requireNonNull(nodeScheduler, "nodeScheduler is null");
@@ -904,6 +911,7 @@ public class SqlQueryExecution
                     tracer,
                     plannerContext,
                     analyzerFactory,
+                    enforcedFilterColumnsConfig,
                     splitSourceFactory,
                     nodePartitioningManager,
                     nodeScheduler,
